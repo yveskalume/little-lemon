@@ -1,5 +1,9 @@
-package com.yveskalume.littlelemon.screens
+package com.yveskalume.littlelemon.ui
 
+import android.app.Activity
+import android.content.Context
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -16,24 +20,38 @@ import androidx.compose.material.MaterialTheme
 import androidx.compose.material.OutlinedTextField
 import androidx.compose.material.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.navigation.NavController
+import androidx.navigation.compose.rememberNavController
+import com.yveskalume.littlelemon.MainActivity
 import com.yveskalume.littlelemon.R
 import com.yveskalume.littlelemon.ui.theme.Green200
 import com.yveskalume.littlelemon.ui.theme.White
 import com.yveskalume.littlelemon.ui.theme.Yellow
+import com.yveskalume.littlelemon.util.Constants
+import com.yveskalume.littlelemon.util.Destination
+import com.yveskalume.littlelemon.util.isEmail
 
 @Composable
-fun OnBoarding() {
+fun OnBoarding(navController: NavController) {
+    val context = LocalContext.current
+
+    BackHandler {
+        (context as Activity).finish()
+    }
+
     var firstName by remember {
         mutableStateOf("")
     }
@@ -45,6 +63,15 @@ fun OnBoarding() {
     var email by remember {
         mutableStateOf("")
     }
+
+    var isFormValid by remember {
+        mutableStateOf(false)
+    }
+
+    LaunchedEffect(firstName, lastName, email) {
+        isFormValid = firstName.isNotBlank() && lastName.isNotBlank() && email.isEmail()
+    }
+
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Image(
             painter = painterResource(id = R.drawable.logo),
@@ -123,7 +150,19 @@ fun OnBoarding() {
         Spacer(modifier = Modifier.height(32.dp))
 
         Button(
-            onClick = { /*TODO*/ },
+            enabled = isFormValid,
+            onClick = {
+                val activity = (context as MainActivity)
+                val sharedPref = activity.getPreferences(Context.MODE_PRIVATE)
+                with(sharedPref.edit()) {
+                    putString(Constants.userDatekeys.firstName, firstName)
+                    putString(Constants.userDatekeys.lastName, lastName)
+                    putString(Constants.userDatekeys.email, email)
+                    apply()
+                }
+                Toast.makeText(context, "Registration successful!", Toast.LENGTH_SHORT).show()
+                navController.navigate(Destination.Home.route)
+            },
             colors = ButtonDefaults.buttonColors(backgroundColor = Yellow),
             shape = RoundedCornerShape(16.dp),
             modifier = Modifier
@@ -141,6 +180,6 @@ fun OnBoarding() {
 @Composable
 fun OnBoardingPreview() {
     MaterialTheme {
-        OnBoarding()
+        OnBoarding(navController = rememberNavController())
     }
 }
