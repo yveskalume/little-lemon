@@ -1,2 +1,4 @@
 # Little Lemon
-My capstone project for the Meta Android Developer Program
+
+This course gives the opportunity to demonstrate the skills gained throughout 
+the Android Developer Professional Certificate program. 
