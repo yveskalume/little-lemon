@@ -2,7 +2,7 @@ package com.yveskalume.littlelemon.ui
 
 import android.app.Activity
 import androidx.activity.compose.BackHandler
-import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.animation.animateColorAsState
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -39,6 +39,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -63,18 +64,24 @@ import com.yveskalume.littlelemon.ui.theme.Green200
 import com.yveskalume.littlelemon.ui.theme.White
 import com.yveskalume.littlelemon.ui.theme.Yellow
 import com.yveskalume.littlelemon.util.Destination
+import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalMaterialApi::class, ExperimentalFoundationApi::class)
+@OptIn(ExperimentalMaterialApi::class)
 @Composable
 fun Home(navController: NavController) {
     val context = LocalContext.current
-
+    val coroutineScope = rememberCoroutineScope()
     val menuDataProvider = rememberMenuDataProvider(context)
 
-    val menuItems by menuDataProvider.menu.collectAsState()
+    var searchText by remember {
+        mutableStateOf("")
+    }
 
-    LaunchedEffect(Unit) {
-        menuDataProvider.getData()
+    val menuItems by menuDataProvider.menu.collectAsState()
+    val categories by menuDataProvider.categories.collectAsState()
+
+    LaunchedEffect(searchText) {
+        menuDataProvider.getData(searchText)
     }
 
     BackHandler {
@@ -113,10 +120,21 @@ fun Home(navController: NavController) {
         }
 
         item {
-            HeroSection(onTextSearchChange = {})
+            HeroSection(searchText = searchText, onTextSearchChange = { searchText = it })
         }
         item {
-            MenuBreakDownSection()
+            MenuBreakDownSection(
+                categories = categories,
+                onCategoryClick = {
+                    coroutineScope.launch {
+                        if (it != null) {
+                            menuDataProvider.getByCategory(it)
+                        } else {
+                            menuDataProvider.getData("")
+                        }
+                    }
+                }
+            )
         }
         items(menuItems) { item ->
             Divider()
@@ -126,10 +144,8 @@ fun Home(navController: NavController) {
 }
 
 @Composable
-fun HeroSection(onTextSearchChange: (String) -> Unit) {
-    var searchText by remember {
-        mutableStateOf("")
-    }
+fun HeroSection(searchText: String, onTextSearchChange: (String) -> Unit) {
+
     Surface(
         modifier = Modifier
             .fillMaxWidth()
@@ -183,7 +199,6 @@ fun HeroSection(onTextSearchChange: (String) -> Unit) {
                 colors = TextFieldDefaults.outlinedTextFieldColors(backgroundColor = White),
                 shape = RoundedCornerShape(8.dp),
                 onValueChange = {
-                    searchText = it
                     onTextSearchChange(it)
                 },
                 modifier = Modifier.fillMaxWidth(),
@@ -200,7 +215,10 @@ fun HeroSection(onTextSearchChange: (String) -> Unit) {
 
 @OptIn(ExperimentalMaterialApi::class)
 @Composable
-fun MenuBreakDownSection() {
+fun MenuBreakDownSection(categories: List<String>, onCategoryClick: (String?) -> Unit) {
+    var selectedCategory: String? by remember {
+        mutableStateOf(null)
+    }
     Text(
         text = "ORDER FOR DELIVERY",
         fontSize = 24.sp,
@@ -212,11 +230,27 @@ fun MenuBreakDownSection() {
         contentPadding = PaddingValues(16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp)
     ) {
-        items(5) {
+        items(categories) {
+            val color by animateColorAsState(
+                targetValue = if (selectedCategory == it) {
+                    Green200
+                } else {
+                    Gray100
+                },
+                label = ""
+            )
             Chip(
-                colors = ChipDefaults.chipColors(backgroundColor = Gray100),
-                onClick = { /*TODO*/ }) {
-                Text(text = "Menu")
+                colors = ChipDefaults.chipColors(backgroundColor = color),
+                onClick = {
+                    selectedCategory = if (selectedCategory == it) {
+                        null
+                    } else {
+                        it
+                    }
+                    onCategoryClick(selectedCategory)
+                }
+            ) {
+                Text(text = it)
             }
         }
     }
@@ -245,7 +279,7 @@ fun MenuItem(menuItem: MenuItem) {
         AsyncImage(
             model = menuItem.image,
             contentDescription = null,
-            modifier = Modifier.size(80.dp)
+            modifier = Modifier.size(90.dp)
         )
     }
 }
